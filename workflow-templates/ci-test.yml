@@ -1,0 +1,30 @@
+---
+# File     : ci-test.yml
+# Modified : <2021-02-24 Wed 16:29:19 GMT>
+
+name: "ci-test"
+on:
+  push:
+defaults:
+  run:
+    shell: "bash"
+env:
+jobs:
+  test-ci:
+    runs-on: "ubuntu-18.04"
+    steps:
+      - name: "[test-ci|checkout] ${{ github.repository }} project"
+        uses: "actions/checkout@v2"
+        with:
+          repository: "${{ github.repository }}"
+          token: "${{ github.token }}"
+          fetch-depth: 1
+          clean: true
+          lfs: false
+          submodules: false
+      - name: "[test-ci] testing script"
+        run: |
+          echo Hello World
+
+...
+# End of ci-test.yml
