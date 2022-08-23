@@ -30,7 +30,8 @@ If you want to add or fix more than one thing, submit more than one pull request
 We have many projects written in different languages. For each language we use a corresponding code style that you should follow:
 
 * [Golang Code Style][golang_code_style]
-* [JavaScript Code Style][js_code_style]
+* [Type/JavaScript Code Style][js_code_style]
+* [Python Code Style][python_code_style]
 
 The core team is monitoring for pull requests. We will review your pull request and either merge it,
 request changes to it, or close it with an explanation.
