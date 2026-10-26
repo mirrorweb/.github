@@ -13,12 +13,16 @@ Any activity that changes GitHub's PR `updated_at` timestamp restarts the inacti
 5. Restrict installation to this account, then create the App.
 6. Install the App on the `mirrorweb` organization and select **All repositories**. This covers existing and future repositories. A selected-repository installation only scans the selected repositories.
 7. On the App settings page, generate a private key and note the App ID.
-8. In this repository's **Settings → Secrets and variables → Actions**, add the repository variable `STALE_PR_APP_ID` with the App ID and the repository secret `STALE_PR_APP_PRIVATE_KEY` with the complete downloaded PEM file. Do not commit the key.
+8. In this repository's **Settings → Secrets and variables → Actions**, add the repository variable `STALE_PR_APP_ID` with the App ID.
+9. In **Settings → Environments**, create the `inactive-pr-cleanup` environment. Under **Deployment branches and tags**, select **Selected branches and tags** and add a **Branch** rule for exactly `main`. Do not add tag rules or wildcard rules. This restricts credential access even if someone edits a workflow on another branch.
+10. In that environment, add the environment secret `STALE_PR_APP_PRIVATE_KEY` with the complete downloaded PEM file. Do not commit the key or store it as a repository or organization Actions secret.
+
+If the key was previously saved as a repository secret, add it to the protected environment from the original PEM file, then delete the repository secret. Environment restrictions do not protect a separate repository-level copy. GitHub cannot display or transfer an existing secret value. If the original PEM file is unavailable, generate a new App key, save it in the protected environment, and revoke the old key.
 
 ## Activate and verify
 
 1. Merge the workflow into the default branch. Scheduled workflows only run from that branch.
-2. Open **Actions → Close inactive PRs across MirrorWeb → Run workflow**. Leave **Preview candidates without closing PRs** selected.
+2. Open **Actions → Close inactive PRs across MirrorWeb → Run workflow**. Select the `main` branch and leave **Preview candidates without closing PRs** selected. The privileged job rejects other refs and checks out `main` explicitly. GitHub also enforces the environment's branch rule before releasing its secret.
 3. Check the repository count and candidate list in the run summary. Confirm that the App installation covers all repositories.
 4. Run the workflow again with the preview checkbox cleared to close matching PRs immediately. Subsequent daily runs close matching PRs automatically.
 
