@@ -1,0 +1,81 @@
+name: Close inactive PRs across MirrorWeb
+
+on:
+  pull_request:
+    paths:
+      - .github/workflows/close-inactive-prs.yml
+      - scripts/close_inactive_prs.py
+      - tests/test_close_inactive_prs.py
+  schedule:
+    - cron: '23 6 * * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Preview candidates without closing PRs
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: close-inactive-prs
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s tests
+  close-inactive-prs:
+    if: github.event_name != 'pull_request'
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+      - name: Check App configuration
+        env:
+          APP_ID: ${{ vars.STALE_PR_APP_ID }}
+          APP_PRIVATE_KEY: ${{ secrets.STALE_PR_APP_PRIVATE_KEY }}
+        run: |
+          if [ -z "$APP_ID" ] || [ -z "$APP_PRIVATE_KEY" ]; then
+            echo '::error::Configure STALE_PR_APP_ID and STALE_PR_APP_PRIVATE_KEY. See docs/inactive-prs.md.'
+            exit 1
+          fi
+      - name: Create organization App token
+        id: app-token
+        uses: actions/create-github-app-token@fee1f7d63c2ff003460e3d139729b119787bc349 # v2
+        with:
+          app-id: ${{ vars.STALE_PR_APP_ID }}
+          private-key: ${{ secrets.STALE_PR_APP_PRIVATE_KEY }}
+          owner: mirrorweb
+          permission-pull-requests: write
+      - name: Close or preview inactive PRs
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          APPLY: ${{ github.event_name == 'schedule' || inputs.dry_run == false }}
+        run: |
+          if [ "$APPLY" = true ]; then
+            python3 scripts/close_inactive_prs.py --apply
+          else
+            python3 scripts/close_inactive_prs.py
+          fi
+      - name: Include report in run summary
+        if: always()
+        run: |
+          if [ -f inactive-pr-report.json ]; then
+            {
+              echo '<details><summary>Full PR results</summary>'
+              echo ''
+              echo '```json'
+              cat inactive-pr-report.json
+              echo '```'
+              echo '</details>'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
